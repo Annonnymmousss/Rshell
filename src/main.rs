@@ -1,5 +1,8 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::env;
+use std::path::Path;
+use std::os::unix::fs::PermissionsExt;
 
 fn main() {
     // TODO: Uncomment the code below to pass the first stage
@@ -26,11 +29,29 @@ fn main() {
         }else if first_word == &Some("type"){
             let trimmed = command.trim();
             let (_,rest) = trimmed.split_once("type ").unwrap_or(("",&trimmed));
+            let cmd = rest.trim();
+            let paths = env::var("PATH").unwrap();
+            let mut found = false;
             if builtin.contains(&rest) {
                 println!("{} is a shell builtin",&rest);
-            }else {
-                println!("{}: not found",&rest);
-            };
+                continue;
+            }
+            for dir in paths.split(':') {
+                let full_path = Path::new(dir).join(cmd);
+
+                if full_path.exists() {
+                    let meta = full_path.metadata().unwrap();
+                    if meta.permissions().mode() & 0o111 != 0 {
+                        println!("{cmd} is {}", full_path.display());
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if !found {
+                println!("{}: not found",cmd);
+            }
+        
         }else {
             println!("{}: command not found",command.trim());
         }
