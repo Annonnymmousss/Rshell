@@ -8,6 +8,8 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
 
+        let builtin = vec!["type", "echo", "exit"];
+
         let mut command = String :: new();
         io::stdin()
             .read_line(&mut command)
@@ -21,6 +23,14 @@ fn main() {
             let trimmed = command.trim();
             let (_,rest) = trimmed.split_once("echo ").unwrap_or(("",&trimmed));
             println!("{}",rest);
+        }else if first_word == &Some("type"){
+            let trimmed = command.trim();
+            let (_,rest) = trimmed.split_once("type ").unwrap_or(("",&trimmed));
+            if builtin.contains(&rest) {
+                println!("{} is a shell builtin",&rest);
+            }else {
+                println!("{}: not found",&rest);
+            };
         }else {
             println!("{}: command not found",command.trim());
         }
