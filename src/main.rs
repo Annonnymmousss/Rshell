@@ -12,7 +12,7 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
 
-        let builtin = vec!["type", "echo", "exit", "pwd"];
+        let builtin = vec!["type", "echo", "exit", "pwd", "cd"];
         let mut command = String :: new();
         
 
@@ -66,6 +66,15 @@ fn main() {
                 println!("{}", cwd.display());
             }
             continue;
+        }else if first_word == &Some("cd") {
+            if args.is_empty() {
+            if let Ok(home) = env::var("HOME") {
+                change_directory(&home);
+            }
+            } else if !change_directory(args[0]) {
+                println!("cd: {}: No such file or directory", args[0]);
+            }
+            continue;
         }else{
             if command_exists(first_word_str){
                 let output = Command::new(first_word_str)
@@ -97,4 +106,19 @@ fn main() {
         }
         false
     }
+
+    fn directory_exists(path: &str) -> bool {
+        let p = Path::new(path);
+        p.exists() && p.is_dir()
+    }
+
+    use std::env;
+
+    fn change_directory(path: &str) -> bool {
+        match env::set_current_dir(path) {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
 }
