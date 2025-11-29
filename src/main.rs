@@ -12,7 +12,7 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
 
-        let builtin = vec!["type", "echo", "exit"];
+        let builtin = vec!["type", "echo", "exit", "pwd"];
         let mut command = String :: new();
         
 
@@ -61,6 +61,11 @@ fn main() {
                 continue;
             }
         
+        }else if first_word == &Some("pwd") {
+            if let Ok(cwd) = env::current_dir() {
+                println!("{}", cwd.display());
+            }
+            continue;
         }else{
             if command_exists(first_word_str){
                 let output = Command::new(first_word_str)
