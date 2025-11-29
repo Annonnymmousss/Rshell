@@ -67,9 +67,9 @@ fn main() {
             }
             continue;
         }else if first_word == &Some("cd") {
-            if args.is_empty() {
-            if let Ok(home) = env::var("HOME") {
-                change_directory(&home);
+            if args.is_empty() || args[0] =="~" {
+                if let Ok(home) = env::var("HOME") {
+                    change_directory(&home);
             }
             } else if !change_directory(args[0]) {
                 println!("cd: {}: No such file or directory", args[0]);
@@ -106,13 +106,6 @@ fn main() {
         }
         false
     }
-
-    fn directory_exists(path: &str) -> bool {
-        let p = Path::new(path);
-        p.exists() && p.is_dir()
-    }
-
-    use std::env;
 
     fn change_directory(path: &str) -> bool {
         match env::set_current_dir(path) {
