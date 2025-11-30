@@ -27,31 +27,7 @@ fn main() {
         if command.trim() == "exit"{
             break;
         }else if first_word_str == "echo" {
-            let trimmed = command.trim();
-            let (_,rest) = trimmed.split_once("echo ").unwrap_or(("",&trimmed));
-            let mut in_quotes = false;
-            let mut result = String::new();
-            let mut prev_was_space = false;
-
-            for ch in rest.chars() {
-                match ch {
-                    '\'' => {
-                        in_quotes = !in_quotes;
-                    }
-                    ' ' if !in_quotes => {
-                        if !prev_was_space {
-                            result.push(' ');
-                        }
-                        prev_was_space = true;
-                    }
-                    _ => {
-                        result.push(ch);
-                        prev_was_space = false;
-                    }
-                }
-            }
-
-            println!("{}", result.trim());
+            println!("{}", args.join(" "));
             continue;
         }else if first_word_str == "type"{
             let trimmed = command.trim();
@@ -134,32 +110,48 @@ fn main() {
     }
 
     fn parse_args(line: &str) -> Vec<String> {
-    let mut args: Vec<String> = Vec::new();
-    let mut current = String::new();
-    let mut in_quotes = false;
+        let mut args: Vec<String> = Vec::new();
+        let mut current = String::new();
+        let mut in_single = false;
+        let mut in_double = false;
 
-    for ch in line.chars() {
-        match ch {
-            '\'' => {
-                in_quotes = !in_quotes;
-            }
-            ' ' if !in_quotes => {
-                if !current.is_empty() {
-                    args.push(current.clone());
-                    current.clear();
+        for ch in line.chars() {
+            match ch {
+                '"' => {
+                    if !in_single {
+                        in_double = !in_double;
+                    } else {
+                        current.push(ch);
+                    }
+                }
+                '\'' => {
+                    if !in_double {
+                        in_single = !in_single;
+                    } else {
+                        current.push(ch);
+                    }
+                }
+                ch if ch == ' ' || ch == '\t' => {
+                    if !in_single && !in_double {
+                        if !current.is_empty() {
+                            args.push(current.clone());
+                            current.clear();
+                        }
+                    } else {
+                        current.push(ch);
+                    }
+                }
+                _ => {
+                    current.push(ch);
                 }
             }
-            _ => {
-                current.push(ch);
-            }
         }
-    }
 
-    if !current.is_empty() {
-        args.push(current);
-    }
+        if !current.is_empty() {
+            args.push(current);
+        }
 
-    args
+        args
     }
 
 }
