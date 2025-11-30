@@ -6,7 +6,6 @@ use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 
 fn main() {
-    // TODO: Uncomment the code below to pass the first stage
 
     loop{
         print!("$ ");
@@ -14,27 +13,47 @@ fn main() {
 
         let builtin = vec!["type", "echo", "exit", "pwd", "cd"];
         let mut command = String :: new();
-        
 
         io::stdin()
             .read_line(&mut command)
             .expect("Unable to read the input");
 
-        let parts = &command.trim().split_whitespace();
-        let mut args: Vec<&str> = parts.clone().collect(); 
-        args.remove(0);
-
-        let first_word = &command.split_whitespace().next();
-        let first_word_str = first_word.unwrap_or("");
+        let trimmed = command.trim();
+        let parts = parse_args(trimmed);           
+        if parts.is_empty() { continue; }                  
+        let first_word_str = parts[0].as_str();             
+        let args: Vec<&str> = parts[1..].iter().map(|s| s.as_str()).collect(); 
 
         if command.trim() == "exit"{
             break;
-        }else if first_word == &Some("echo") {
+        }else if first_word_str == "echo" {
             let trimmed = command.trim();
             let (_,rest) = trimmed.split_once("echo ").unwrap_or(("",&trimmed));
-            println!("{}",rest);
+            let mut in_quotes = false;
+            let mut result = String::new();
+            let mut prev_was_space = false;
+
+            for ch in rest.chars() {
+                match ch {
+                    '\'' => {
+                        in_quotes = !in_quotes;
+                    }
+                    ' ' if !in_quotes => {
+                        if !prev_was_space {
+                            result.push(' ');
+                        }
+                        prev_was_space = true;
+                    }
+                    _ => {
+                        result.push(ch);
+                        prev_was_space = false;
+                    }
+                }
+            }
+
+            println!("{}", result.trim());
             continue;
-        }else if first_word == &Some("type"){
+        }else if first_word_str == "type"{
             let trimmed = command.trim();
             let (_,rest) = trimmed.split_once("type ").unwrap_or(("",&trimmed));
             let cmd = rest.trim();
@@ -60,13 +79,13 @@ fn main() {
                 println!("{}: not found",cmd);
                 continue;
             }
-        
-        }else if first_word == &Some("pwd") {
+
+        }else if first_word_str == "pwd" {
             if let Ok(cwd) = env::current_dir() {
                 println!("{}", cwd.display());
             }
             continue;
-        }else if first_word == &Some("cd") {
+        }else if first_word_str == "cd" {
             if args.is_empty() || args[0] =="~" {
                 if let Ok(home) = env::var("HOME") {
                     change_directory(&home);
@@ -112,6 +131,35 @@ fn main() {
             Ok(_) => true,
             Err(_) => false,
         }
+    }
+
+    fn parse_args(line: &str) -> Vec<String> {
+    let mut args: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+
+    for ch in line.chars() {
+        match ch {
+            '\'' => {
+                in_quotes = !in_quotes;
+            }
+            ' ' if !in_quotes => {
+                if !current.is_empty() {
+                    args.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => {
+                current.push(ch);
+            }
+        }
+    }
+
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    args
     }
 
 }
