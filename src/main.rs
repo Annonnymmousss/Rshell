@@ -114,35 +114,79 @@ fn main() {
         let mut current = String::new();
         let mut in_single = false;
         let mut in_double = false;
+        let mut escape = false;
 
-        for ch in line.chars() {
-            match ch {
-                '"' => {
-                    if !in_single {
-                        in_double = !in_double;
-                    } else {
+        let mut chars = line.chars().peekable();
+
+        while let Some(ch) = chars.next() {
+            if escape {
+                current.push(ch);
+                escape = false;
+                continue;
+            }
+
+            if in_double {
+                match ch {
+                    '\\' => {
+                        if let Some(&next) = chars.peek() {
+                            if next == '"' || next == '\\' {
+                                let escaped = chars.next().unwrap();
+                                current.push(escaped);
+                            } else {
+                                current.push('\\');
+                            }
+                        } else {
+                            current.push('\\');
+                        }
+                    }
+                    '"' => {
+                        in_double = false;
+                    }
+                    _ => {
                         current.push(ch);
                     }
                 }
-                '\'' => {
-                    if !in_double {
-                        in_single = !in_single;
-                    } else {
+            } else if in_single {
+                match ch {
+                    '\\' => {
+                        if let Some(&next) = chars.peek() {
+                            if next == '\\' {
+                                chars.next();           
+                                current.push('\\');    
+                            } else {
+                                current.push('\\');     
+                            }
+                        } else {
+                            current.push('\\');
+                        }
+                    }
+                    '\'' => {
+                        in_single = false;
+                    }
+                    _ => {
                         current.push(ch);
                     }
                 }
-                ch if ch == ' ' || ch == '\t' => {
-                    if !in_single && !in_double {
+            } else {
+                match ch {
+                    '\\' => {
+                        escape = true;
+                    }
+                    '"' => {
+                        in_double = true;
+                    }
+                    '\'' => {
+                        in_single = true;
+                    }
+                    ' ' | '\t' => {
                         if !current.is_empty() {
                             args.push(current.clone());
                             current.clear();
                         }
-                    } else {
+                    }
+                    _ => {
                         current.push(ch);
                     }
-                }
-                _ => {
-                    current.push(ch);
                 }
             }
         }
@@ -153,5 +197,4 @@ fn main() {
 
         args
     }
-
 }
