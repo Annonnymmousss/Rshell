@@ -56,7 +56,7 @@ fn main() {
                 println!("{}", output);
             }
 
-            if let Some(path) = &redirect_stderr {
+            if let Some((path, _append)) = &redirect_stderr {
                 use std::fs::File;
                 let _ = File::create(path);
             }
@@ -109,6 +109,7 @@ fn main() {
                     .output()
                     .expect("failed to execute process");
 
+                // stdout: > / >> / none
                 if let Some((path, append)) = &redirect_stdout {
                     use std::fs::OpenOptions;
                     use std::io::Write;
@@ -132,16 +133,25 @@ fn main() {
                     print!("{}", String::from_utf8_lossy(&output.stdout));
                 }
 
-                if let Some(path) = &redirect_stderr {
+                // stderr: 2> / 2>> / none
+                if let Some((path, append)) = &redirect_stderr {
                     use std::fs::OpenOptions;
                     use std::io::Write;
-                    if let Ok(mut file) = OpenOptions::new()
-                        .create(true)
-                        .truncate(true)
-                        .write(true)
-                        .open(path)
-                    {
-                        let _ = file.write_all(&output.stderr);
+                    if *append {
+                        if let Ok(mut file) =
+                            OpenOptions::new().create(true).append(true).open(path)
+                        {
+                            let _ = file.write_all(&output.stderr);
+                        }
+                    } else {
+                        if let Ok(mut file) = OpenOptions::new()
+                            .create(true)
+                            .truncate(true)
+                            .write(true)
+                            .open(path)
+                        {
+                            let _ = file.write_all(&output.stderr);
+                        }
                     }
                 } else {
                     print!("{}", String::from_utf8_lossy(&output.stderr));
@@ -269,10 +279,10 @@ fn main() {
 
     fn handle_redirection(
         args: Vec<String>,
-    ) -> (Vec<String>, Option<(String, bool)>, Option<String>) {
+    ) -> (Vec<String>, Option<(String, bool)>, Option<(String, bool)>) {
         let mut clean_args: Vec<String> = Vec::new();
         let mut redirect_stdout: Option<(String, bool)> = None;
-        let mut redirect_stderr: Option<String> = None;
+        let mut redirect_stderr: Option<(String, bool)> = None;
 
         let mut i = 0;
         while i < args.len() {
@@ -288,7 +298,12 @@ fn main() {
                 i += 2;
             } else if args[i] == "2>" {
                 if i + 1 < args.len() {
-                    redirect_stderr = Some(args[i + 1].clone());
+                    redirect_stderr = Some((args[i + 1].clone(), false));
+                }
+                i += 2;
+            } else if args[i] == "2>>" {
+                if i + 1 < args.len() {
+                    redirect_stderr = Some((args[i + 1].clone(), true));
                 }
                 i += 2;
             } else {
