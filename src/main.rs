@@ -20,14 +20,28 @@ fn main() {
 
         let trimmed = command.trim();
         let parts = parse_args(trimmed);           
-        if parts.is_empty() { continue; }                  
+        if parts.is_empty() { continue; }        
+        let (parts, redirect_to) = handle_redirection(parts);
+        if parts.is_empty() { continue; }          
         let first_word_str = parts[0].as_str();             
         let args: Vec<&str> = parts[1..].iter().map(|s| s.as_str()).collect(); 
 
         if command.trim() == "exit"{
             break;
         }else if first_word_str == "echo" {
-            println!("{}", args.join(" "));
+            let output = args.join(" ");
+
+            if let Some(path) = &redirect_to {
+                use std::fs::File;
+                use std::io::Write;
+
+                if let Ok(mut file) = File::create(path) {
+                    let _ = writeln!(file, "{}", output);
+                }
+            } else {
+                println!("{}", output);
+            }
+
             continue;
         }else if first_word_str == "type"{
             let trimmed = command.trim();
@@ -70,19 +84,32 @@ fn main() {
                 println!("cd: {}: No such file or directory", args[0]);
             }
             continue;
-        }else{
+              }else{
             if command_exists(first_word_str){
                 let output = Command::new(first_word_str)
                     .args(&args)
                     .output()
                     .expect("failed to execute process");
-                print!("{}", String::from_utf8_lossy(&output.stdout));
+
+                if let Some(path) = &redirect_to {
+                    use std::fs::File;
+                    use std::io::Write;
+                    if let Ok(mut file) = File::create(path) {
+                        let _ = file.write_all(&output.stdout);
+                    }
+                } else {
+                    print!("{}", String::from_utf8_lossy(&output.stdout));
+                }
+                print!("{}", String::from_utf8_lossy(&output.stderr));
                 continue;
-            }else {
-                println!("{}: command not found",command.trim());
+            } else {
+                println!("{}: command not found", command.trim());
                 continue;
             }
         }
+
+
+
     }
 
 
@@ -196,5 +223,26 @@ fn main() {
         }
 
         args
+    }
+
+
+    fn handle_redirection(args: Vec<String>) -> (Vec<String>, Option<String>) {
+        let mut clean_args: Vec<String> = Vec::new();
+        let mut redirect_to: Option<String> = None;
+
+        let mut i = 0;
+        while i < args.len() {
+            if args[i] == ">" || args[i] == "1>" {
+                if i + 1 < args.len() {
+                    redirect_to = Some(args[i + 1].clone());
+                }
+                i += 2;
+            } else {
+                clean_args.push(args[i].clone());
+                i += 1;
+            }
+        }
+
+        (clean_args, redirect_to)
     }
 }
