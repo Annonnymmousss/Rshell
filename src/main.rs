@@ -34,12 +34,23 @@ fn main() {
         } else if first_word_str == "echo" {
             let output = args.join(" ");
 
-            if let Some(path) = &redirect_stdout {
-                use std::fs::File;
+            if let Some((path, append)) = &redirect_stdout {
+                use std::fs::OpenOptions;
                 use std::io::Write;
 
-                if let Ok(mut file) = File::create(path) {
-                    let _ = writeln!(file, "{}", output);
+                if *append {
+                    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+                        let _ = writeln!(file, "{}", output);
+                    }
+                } else {
+                    if let Ok(mut file) = OpenOptions::new()
+                        .create(true)
+                        .truncate(true)
+                        .write(true)
+                        .open(path)
+                    {
+                        let _ = writeln!(file, "{}", output);
+                    }
                 }
             } else {
                 println!("{}", output);
@@ -98,20 +109,38 @@ fn main() {
                     .output()
                     .expect("failed to execute process");
 
-                if let Some(path) = &redirect_stdout {
-                    use std::fs::File;
+                if let Some((path, append)) = &redirect_stdout {
+                    use std::fs::OpenOptions;
                     use std::io::Write;
-                    if let Ok(mut file) = File::create(path) {
-                        let _ = file.write_all(&output.stdout);
+                    if *append {
+                        if let Ok(mut file) =
+                            OpenOptions::new().create(true).append(true).open(path)
+                        {
+                            let _ = file.write_all(&output.stdout);
+                        }
+                    } else {
+                        if let Ok(mut file) = OpenOptions::new()
+                            .create(true)
+                            .truncate(true)
+                            .write(true)
+                            .open(path)
+                        {
+                            let _ = file.write_all(&output.stdout);
+                        }
                     }
                 } else {
                     print!("{}", String::from_utf8_lossy(&output.stdout));
                 }
 
                 if let Some(path) = &redirect_stderr {
-                    use std::fs::File;
+                    use std::fs::OpenOptions;
                     use std::io::Write;
-                    if let Ok(mut file) = File::create(path) {
+                    if let Ok(mut file) = OpenOptions::new()
+                        .create(true)
+                        .truncate(true)
+                        .write(true)
+                        .open(path)
+                    {
                         let _ = file.write_all(&output.stderr);
                     }
                 } else {
@@ -238,16 +267,23 @@ fn main() {
         args
     }
 
-    fn handle_redirection(args: Vec<String>) -> (Vec<String>, Option<String>, Option<String>) {
+    fn handle_redirection(
+        args: Vec<String>,
+    ) -> (Vec<String>, Option<(String, bool)>, Option<String>) {
         let mut clean_args: Vec<String> = Vec::new();
-        let mut redirect_stdout: Option<String> = None;
+        let mut redirect_stdout: Option<(String, bool)> = None;
         let mut redirect_stderr: Option<String> = None;
 
         let mut i = 0;
         while i < args.len() {
             if args[i] == ">" || args[i] == "1>" {
                 if i + 1 < args.len() {
-                    redirect_stdout = Some(args[i + 1].clone());
+                    redirect_stdout = Some((args[i + 1].clone(), false));
+                }
+                i += 2;
+            } else if args[i] == ">>" || args[i] == "1>>" {
+                if i + 1 < args.len() {
+                    redirect_stdout = Some((args[i + 1].clone(), true));
                 }
                 i += 2;
             } else if args[i] == "2>" {
