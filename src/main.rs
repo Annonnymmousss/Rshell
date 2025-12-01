@@ -1,5 +1,5 @@
-use std::env;
 #[allow(unused_imports)]
+use std::env;
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -109,7 +109,7 @@ fn main() {
                     .output()
                     .expect("failed to execute process");
 
-                // stdout: > / >> / none
+
                 if let Some((path, append)) = &redirect_stdout {
                     use std::fs::OpenOptions;
                     use std::io::Write;
@@ -133,7 +133,7 @@ fn main() {
                     print!("{}", String::from_utf8_lossy(&output.stdout));
                 }
 
-                // stderr: 2> / 2>> / none
+
                 if let Some((path, append)) = &redirect_stderr {
                     use std::fs::OpenOptions;
                     use std::io::Write;
